@@ -22,7 +22,7 @@ func ConnectDB() error {
 		user := os.Getenv("DB_USER")
 		password := os.Getenv("DB_PASSWORD")
 		dbname := os.Getenv("DB_NAME")
-		
+
 		dsn = fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable", user, password, host, port, dbname)
 	}
 
