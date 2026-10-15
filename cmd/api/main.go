@@ -25,20 +25,18 @@ func main() {
 
 	r := gin.Default()
 
-	// --- KONFIGURASI CORS (UNTUK FRONTEND PORT 3000) ---
 	r.Use(func(c *gin.Context) {
-		c.Writer.Header().Set("Access-Control-Allow-Origin", "http://localhost:3000")
-		c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
-		c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, accept, origin, Cache-Control, X-Requested-With")
-		c.Writer.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
+    c.Writer.Header().Set("Access-Control-Allow-Origin", "*") // Izinkan semua origin untuk development
+    c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
+    c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, accept, origin, Cache-Control, X-Requested-With")
+    c.Writer.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
 
-		if c.Request.Method == "http.MethodOptions" {
-			c.AbortWithStatus(http.StatusNoContent)
-			return
-		}
-		c.Next()
-	})
-	// --------------------------------------------------
+    if c.Request.Method == http.MethodOptions {
+        c.AbortWithStatus(http.StatusNoContent)
+        return
+    }
+    c.Next()
+})
 
 	// Endpoint health check
 	r.GET("/health", func(c *gin.Context) {
@@ -59,6 +57,9 @@ func main() {
 		// Brands routes
 		v1.GET("/brands", brands.GetBrandsHandler)
 		v1.POST("/brands", brands.CreateBrandHandler)
+        v1.PUT("/brands/:id", brands.UpdateBrandHandler)       // <-- Tambahan untuk Edit
+        v1.PATCH("/brands/:id/archive", brands.ArchiveBrandHandler)
+        v1.PATCH("/brands/:id/restore", brands.RestoreBrandHandler)
 
 		// Warehouses routes (disesuaikan ke group /api/v1 agar seragam)
 		v1.GET("/warehouses", warehouseHandler.List)
