@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -12,15 +13,15 @@ type Repository struct {
 	db *pgxpool.Pool
 }
 type Warehouse struct {
-	ID         int64   `json:"id"`
-	Code       string  `json:"code"`
-	Name       string  `json:"name"`
-	Address    *string `json:"address"`
-	PICName    *string `json:"pic_name"`
-	Phone      *string `json:"phone"`
-	ArchivedAt *string `json:"archived_at"`
-	CreatedAt  string  `json:"created_at"`
-	UpdatedAt  string  `json:"updated_at"`
+	ID         int64      `json:"id"`
+	Code       string     `json:"code"`
+	Name       string     `json:"name"`
+	Address    *string    `json:"address"`
+	PICName    *string    `json:"pic_name"`
+	Phone      *string    `json:"phone"`
+	ArchivedAt *time.Time `json:"archived_at"`
+	CreatedAt  time.Time  `json:"created_at"`
+	UpdatedAt  time.Time  `json:"updated_at"`
 }
 
 func NewRepository(db *pgxpool.Pool) *Repository {
@@ -113,7 +114,7 @@ func (repo *Repository) List(
 	data := make([]Warehouse, 0)
 	for rows.Next() {
 		var item Warehouse
-		var archivedAt, createdAt, updatedAt *string
+		var archivedAt *time.Time
 
 		if err := rows.Scan(
 			&item.ID,
@@ -123,20 +124,15 @@ func (repo *Repository) List(
 			&item.PICName,
 			&item.Phone,
 			&archivedAt,
-			&createdAt,
-			&updatedAt,
+			&item.CreatedAt,
+			&item.UpdatedAt,
 		); err != nil {
-			return ListResult{}, fmt.Errorf("gagal membaca data gudang: %w", err)
+			return ListResult{}, fmt.Errorf(
+				"gagal membaca data gudang: %w", err,
+			)
 		}
 
 		item.ArchivedAt = archivedAt
-		if createdAt != nil {
-			item.CreatedAt = *createdAt
-		}
-		if updatedAt != nil {
-			item.UpdatedAt = *updatedAt
-		}
-
 		data = append(data, item)
 	}
 
