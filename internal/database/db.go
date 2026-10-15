@@ -12,17 +12,16 @@ import (
 var DB *pgxpool.Pool
 
 func ConnectDB() error {
-	dsn := os.Getenv("DATABASE_URL")
-	if dsn == "" {
-		// Fallback jika menggunakan variabel terpisah di .env
-		host := os.Getenv("DB_HOST")
-		port := os.Getenv("DB_PORT")
-		user := os.Getenv("DB_USER")
-		password := os.Getenv("DB_PASSWORD")
-		dbname := os.Getenv("DB_NAME")
-		
-		dsn = fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable", user, password, host, port, dbname)
-	}
+    dsn := os.Getenv("DATABASE_URL")
+    if dsn == "" {
+        host := os.Getenv("DB_HOST")
+        port := os.Getenv("DB_PORT")
+        user := os.Getenv("DB_USER")
+        password := os.Getenv("DB_PASSWORD")
+        dbname := os.Getenv("DB_NAME")
+
+        dsn = fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable", user, password, host, port, dbname)
+    }
 
     var err error
     DB, err = pgxpool.New(context.Background(), dsn)
