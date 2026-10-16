@@ -57,9 +57,13 @@ func main() {
 		// Brands routes
 		v1.GET("/brands", brands.GetBrandsHandler)
 		v1.POST("/brands", brands.CreateBrandHandler)
+
+		v1.GET("/brands/:id", brands.GetBrandByIDHandler)
+
         v1.PUT("/brands/:id", brands.UpdateBrandHandler)       // <-- Tambahan untuk Edit
         v1.PATCH("/brands/:id/archive", brands.ArchiveBrandHandler)
         v1.PATCH("/brands/:id/restore", brands.RestoreBrandHandler)
+		
 
 		// Warehouses routes (disesuaikan ke group /api/v1 agar seragam)
 		v1.GET("/warehouses", warehouseHandler.List)
