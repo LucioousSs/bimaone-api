@@ -4,24 +4,12 @@ import (
 	"context"
 	"fmt"
 	"strings"
-	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type Repository struct {
 	db *pgxpool.Pool
-}
-type Warehouse struct {
-	ID         int64      `json:"id"`
-	Code       string     `json:"code"`
-	Name       string     `json:"name"`
-	Address    *string    `json:"address"`
-	PICName    *string    `json:"pic_name"`
-	Phone      *string    `json:"phone"`
-	ArchivedAt *time.Time `json:"archived_at"`
-	CreatedAt  time.Time  `json:"created_at"`
-	UpdatedAt  time.Time  `json:"updated_at"`
 }
 
 func NewRepository(db *pgxpool.Pool) *Repository {
@@ -58,7 +46,6 @@ func (repo *Repository) List(
 	}
 
 	search := strings.TrimSpace(params.Search)
-
 	where := []string{}
 	args := []any{}
 
@@ -76,7 +63,7 @@ func (repo *Repository) List(
 	case "archived":
 		where = append(where, "archived_at IS NOT NULL")
 	case "all":
-		// Tidak menambahkan filter status.
+		// Tidak memfilter berdasarkan status arsip.
 	default:
 		return ListResult{}, fmt.Errorf("status tidak valid")
 	}
@@ -88,6 +75,7 @@ func (repo *Repository) List(
 
 	var total int64
 	countQuery := "SELECT COUNT(*) FROM warehouses" + whereSQL
+
 	if err := repo.db.QueryRow(ctx, countQuery, args...).Scan(&total); err != nil {
 		return ListResult{}, fmt.Errorf("gagal menghitung gudang: %w", err)
 	}
@@ -107,14 +95,16 @@ func (repo *Repository) List(
 
 	rows, err := repo.db.Query(ctx, query, listArgs...)
 	if err != nil {
-		return ListResult{}, fmt.Errorf("gagal mengambil daftar gudang: %w", err)
+		return ListResult{}, fmt.Errorf(
+			"gagal mengambil daftar gudang: %w", err,
+		)
 	}
 	defer rows.Close()
 
 	data := make([]Warehouse, 0)
+
 	for rows.Next() {
 		var item Warehouse
-		var archivedAt *time.Time
 
 		if err := rows.Scan(
 			&item.ID,
@@ -123,7 +113,7 @@ func (repo *Repository) List(
 			&item.Address,
 			&item.PICName,
 			&item.Phone,
-			&archivedAt,
+			&item.ArchivedAt,
 			&item.CreatedAt,
 			&item.UpdatedAt,
 		); err != nil {
@@ -132,12 +122,13 @@ func (repo *Repository) List(
 			)
 		}
 
-		item.ArchivedAt = archivedAt
 		data = append(data, item)
 	}
 
 	if err := rows.Err(); err != nil {
-		return ListResult{}, fmt.Errorf("gagal membaca hasil query: %w", err)
+		return ListResult{}, fmt.Errorf(
+			"gagal membaca hasil query: %w", err,
+		)
 	}
 
 	totalPages := total / int64(params.PerPage)
@@ -152,4 +143,185 @@ func (repo *Repository) List(
 		Total:      total,
 		TotalPages: totalPages,
 	}, nil
+}
+
+func (repo *Repository) Create(
+	ctx context.Context,
+	input CreateWarehouseInput,
+) (Warehouse, error) {
+	const query = `
+		INSERT INTO warehouses (code, name, address, pic_name, phone)
+		VALUES ($1, $2, $3, $4, $5)
+		RETURNING id, code, name, address, pic_name, phone,
+		          archived_at, created_at, updated_at
+	`
+
+	var item Warehouse
+
+	err := repo.db.QueryRow(
+		ctx,
+		query,
+		input.Code,
+		input.Name,
+		input.Address,
+		input.PICName,
+		input.Phone,
+	).Scan(
+		&item.ID,
+		&item.Code,
+		&item.Name,
+		&item.Address,
+		&item.PICName,
+		&item.Phone,
+		&item.ArchivedAt,
+		&item.CreatedAt,
+		&item.UpdatedAt,
+	)
+	if err != nil {
+		return Warehouse{}, fmt.Errorf("gagal membuat gudang: %w", err)
+	}
+
+	return item, nil
+}
+
+func (repo *Repository) GetByID(
+	ctx context.Context,
+	id int64,
+) (Warehouse, error) {
+	const query = `
+		SELECT id, code, name, address, pic_name, phone,
+		       archived_at, created_at, updated_at
+		FROM warehouses
+		WHERE id = $1
+	`
+
+	var item Warehouse
+
+	err := repo.db.QueryRow(ctx, query, id).Scan(
+		&item.ID,
+		&item.Code,
+		&item.Name,
+		&item.Address,
+		&item.PICName,
+		&item.Phone,
+		&item.ArchivedAt,
+		&item.CreatedAt,
+		&item.UpdatedAt,
+	)
+	if err != nil {
+		return Warehouse{}, fmt.Errorf("gagal mengambil gudang: %w", err)
+	}
+
+	return item, nil
+}
+
+func (repo *Repository) Update(
+	ctx context.Context,
+	id int64,
+	input UpdateWarehouseInput,
+) (Warehouse, error) {
+	const query = `
+		UPDATE warehouses
+		SET name = $1,
+		    address = $2,
+		    pic_name = $3,
+		    phone = $4,
+		    updated_at = NOW()
+		WHERE id = $5
+		RETURNING id, code, name, address, pic_name, phone,
+		          archived_at, created_at, updated_at
+	`
+
+	var item Warehouse
+
+	err := repo.db.QueryRow(
+		ctx,
+		query,
+		input.Name,
+		input.Address,
+		input.PICName,
+		input.Phone,
+		id,
+	).Scan(
+		&item.ID,
+		&item.Code,
+		&item.Name,
+		&item.Address,
+		&item.PICName,
+		&item.Phone,
+		&item.ArchivedAt,
+		&item.CreatedAt,
+		&item.UpdatedAt,
+	)
+	if err != nil {
+		return Warehouse{}, fmt.Errorf("gagal memperbarui gudang: %w", err)
+	}
+
+	return item, nil
+}
+
+func (repo *Repository) Archive(
+	ctx context.Context,
+	id int64,
+) (Warehouse, error) {
+	const query = `
+		UPDATE warehouses
+		SET archived_at = NOW(),
+		    updated_at = NOW()
+		WHERE id = $1 AND archived_at IS NULL
+		RETURNING id, code, name, address, pic_name, phone,
+		          archived_at, created_at, updated_at
+	`
+
+	var item Warehouse
+
+	err := repo.db.QueryRow(ctx, query, id).Scan(
+		&item.ID,
+		&item.Code,
+		&item.Name,
+		&item.Address,
+		&item.PICName,
+		&item.Phone,
+		&item.ArchivedAt,
+		&item.CreatedAt,
+		&item.UpdatedAt,
+	)
+	if err != nil {
+		return Warehouse{}, fmt.Errorf("gagal mengarsipkan gudang: %w", err)
+	}
+
+	return item, nil
+}
+
+func (repo *Repository) Restore(
+	ctx context.Context,
+	id int64,
+) (Warehouse, error) {
+	const query = `
+		UPDATE warehouses
+		SET archived_at = NULL,
+		    updated_at = NOW()
+		WHERE id = $1 AND archived_at IS NOT NULL
+		RETURNING id, code, name, address, pic_name, phone,
+		          archived_at, created_at, updated_at
+	`
+
+	var item Warehouse
+
+	err := repo.db.QueryRow(ctx, query, id).Scan(
+		&item.ID,
+		&item.Code,
+		&item.Name,
+		&item.Address,
+		&item.PICName,
+		&item.Phone,
+		&item.ArchivedAt,
+		&item.CreatedAt,
+		&item.UpdatedAt,
+	)
+	if err != nil {
+		return Warehouse{}, fmt.Errorf("gagal memulihkan gudang: %w", err)
+	}
+
+	return item, nil
 }
