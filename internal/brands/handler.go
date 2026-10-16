@@ -4,6 +4,8 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"unicode/utf8"
+
 	"github.com/gin-gonic/gin"
 )
 
@@ -55,15 +57,14 @@ func CreateBrandHandler(c *gin.Context) {
 	}
 
 	newBrand.Name = strings.TrimSpace(newBrand.Name)
+	newBrand.Description = normalizeOptional(newBrand.Description)
 
-	if newBrand.Name == "" {
+	if fields := validateBrandFields(newBrand.Name, newBrand.Description); len(fields) > 0 {
 		c.JSON(http.StatusUnprocessableEntity, gin.H{
 			"error": gin.H{
 				"code":    "VALIDATION_ERROR",
 				"message": "Validasi gagal",
-				"fields": gin.H{
-					"name": "Nama brand tidak boleh kosong",
-				},
+				"fields":  fields,
 			},
 		})
 		return
@@ -118,6 +119,18 @@ func UpdateBrandHandler(c *gin.Context) {
 
 	req.ID = id
 	req.Name = strings.TrimSpace(req.Name)
+	req.Description = normalizeOptional(req.Description)
+
+	if fields := validateBrandFields(req.Name, req.Description); len(fields) > 0 {
+		c.JSON(http.StatusUnprocessableEntity, gin.H{
+			"error": gin.H{
+				"code":    "VALIDATION_ERROR",
+				"message": "Validasi gagal",
+				"fields":  fields,
+			},
+		})
+		return
+	}
 
 	err = UpdateBrand(&req)
 	if err != nil {
@@ -235,4 +248,35 @@ func RestoreBrandHandler(c *gin.Context) {
 		"message": "Brand berhasil dipulihkan",
 		"data":    brand,
 	})
+}
+
+func validateBrandFields(name string, description *string) map[string]string {
+	fields := make(map[string]string)
+
+	nameLen := utf8.RuneCountInString(name)
+	if name == "" {
+		fields["name"] = "Nama brand wajib diisi"
+	} else if nameLen < 2 || nameLen > 100 {
+		fields["name"] = "Nama brand harus terdiri dari 2 sampai 100 karakter"
+	}
+
+	if description != nil && utf8.RuneCountInString(*description) > 500 {
+		fields["description"] = "Deskripsi maksimal 500 karakter"
+	}
+
+	return fields
+}
+
+// Deskripsi kosong disimpan sebagai NULL, bukan string kosong, supaya tidak ada dua bentuk "kosong".
+func normalizeOptional(value *string) *string {
+	if value == nil {
+		return nil
+	}
+
+	trimmed := strings.TrimSpace(*value)
+	if trimmed == "" {
+		return nil
+	}
+
+	return &trimmed
 }
