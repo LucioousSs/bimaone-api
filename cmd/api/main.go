@@ -20,7 +20,10 @@ func main() {
 		log.Println("File .env tidak ditemukan; menggunakan environment variables yang tersedia.")
 	}
 
-	database.ConnectDB()
+	// Tanpa koneksi database tidak ada gunanya melanjutkan, jadi langsung berhenti.
+	if err := database.ConnectDB(); err != nil {
+		log.Fatalf("Gagal terhubung ke database: %v", err)
+	}
 
 	r := gin.Default()
 
@@ -60,23 +63,21 @@ func main() {
 		})
 	})
 
+	brandRepo := brands.NewRepository(database.DB)
+	brandHandler := brands.NewHandler(brandRepo)
+
 	warehouseRepo := warehouses.NewRepository(database.DB)
 	warehouseHandler := warehouses.NewHandler(warehouseRepo)
 
 	v1 := r.Group("/api/v1")
 	{
-		// Brands: pertahankan endpoint yang tersedia di branch dev.
-		v1.GET("/brands", brands.GetBrandsHandler)
-		v1.POST("/brands", brands.CreateBrandHandler)
+		v1.GET("/brands", brandHandler.List)
+		v1.POST("/brands", brandHandler.Create)
+		v1.GET("/brands/:id", brandHandler.GetByID)
+		v1.PUT("/brands/:id", brandHandler.Update)
+		v1.PATCH("/brands/:id/archive", brandHandler.Archive)
+		v1.PATCH("/brands/:id/restore", brandHandler.Restore)
 
-		v1.GET("/brands/:id", brands.GetBrandByIDHandler)
-
-        v1.PUT("/brands/:id", brands.UpdateBrandHandler)       // <-- Tambahan untuk Edit
-        v1.PATCH("/brands/:id/archive", brands.ArchiveBrandHandler)
-        v1.PATCH("/brands/:id/restore", brands.RestoreBrandHandler)
-		
-
-		// Warehouses: daftar, tambah, detail, edit, arsip, dan restore.
 		v1.GET("/warehouses", warehouseHandler.List)
 		v1.POST("/warehouses", warehouseHandler.Create)
 		v1.GET("/warehouses/:id", warehouseHandler.GetByID)
@@ -85,8 +86,13 @@ func main() {
 		v1.PATCH("/warehouses/:id/restore", warehouseHandler.Restore)
 	}
 
-	log.Println("Server berjalan di port 8080...")
-	if err := r.Run(":8080"); err != nil {
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
+	}
+
+	log.Printf("Server berjalan di port %s...", port)
+	if err := r.Run(":" + port); err != nil {
 		log.Fatalf("Gagal menjalankan server: %v", err)
 	}
 }
