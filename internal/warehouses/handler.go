@@ -178,8 +178,15 @@ func (h *Handler) Update(c *gin.Context) {
 		return
 	}
 
+	input.Code = strings.ToUpper(strings.TrimSpace(input.Code))
 	input.Name = strings.TrimSpace(input.Name)
 	fields := make(map[string]string)
+
+	if input.Code == "" {
+		fields["code"] = "Kode gudang wajib diisi"
+	} else if len(input.Code) > 20 {
+		fields["code"] = "Kode gudang maksimal 20 karakter"
+	}
 
 	if input.Name == "" {
 		fields["name"] = "Nama gudang wajib diisi"
@@ -215,6 +222,14 @@ func (h *Handler) Update(c *gin.Context) {
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			respondError(c, http.StatusNotFound, "NOT_FOUND", "Data dengan id itu tidak ada", nil)
+			return
+		}
+
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
+			respondError(c, http.StatusConflict, "DUPLICATE", "Kode gudang sudah digunakan", map[string]string{
+				"code": "Kode gudang sudah digunakan",
+			})
 			return
 		}
 

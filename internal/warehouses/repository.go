@@ -222,12 +222,13 @@ func (repo *Repository) Update(
 ) (Warehouse, error) {
 	const query = `
 		UPDATE warehouses
-		SET name = $1,
-		    address = $2,
-		    pic_name = $3,
-		    phone = $4,
+		SET code = $1,
+		    name = $2,
+		    address = $3,
+		    pic_name = $4,
+		    phone = $5,
 		    updated_at = NOW()
-		WHERE id = $5
+		WHERE id = $6
 		RETURNING id, code, name, address, pic_name, phone,
 		          archived_at, created_at, updated_at
 	`
@@ -237,6 +238,7 @@ func (repo *Repository) Update(
 	err := repo.db.QueryRow(
 		ctx,
 		query,
+		input.Code,
 		input.Name,
 		input.Address,
 		input.PICName,

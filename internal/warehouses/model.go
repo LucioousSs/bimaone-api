@@ -23,6 +23,7 @@ type CreateWarehouseInput struct {
 }
 
 type UpdateWarehouseInput struct {
+	Code    string  `json:"code"`
 	Name    string  `json:"name"`
 	Address *string `json:"address"`
 	PICName *string `json:"pic_name"`
