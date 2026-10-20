@@ -63,9 +63,6 @@ curl http://localhost:8080/health
 go build ./...
 go vet ./...
 go test ./...
-
-# 7. Integration test warehouse (butuh DB hidup)
-WAREHOUSES_INTEGRATION=1 go test ./internal/warehouses
 ```
 
 Catatan PowerShell: laporan `migrate` ditulis ke `stderr` sehingga tampak merah,
