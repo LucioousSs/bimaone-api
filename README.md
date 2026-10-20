@@ -229,7 +229,7 @@ Perilaku ini berlaku sama di `brands` dan `warehouses`.
 go test ./...
 ```
 
-Test handler dan repository tersedia di paket `brands` dan `warehouses`.
+Test handler dan repository tersedia di paket `brands`.
 Jalankan `go test ./...` dari root repo.
 
 ## Koleksi Postman
