@@ -31,6 +31,39 @@ type ListResult struct {
 	TotalPages int64       `json:"total_pages"`
 }
 
+// rowScanner dipenuhi oleh pgx.Row (satu baris) maupun pgx.Rows (banyak baris),
+// jadi cara membaca kolomnya cukup ditulis sekali.
+type rowScanner interface {
+	Scan(dest ...any) error
+}
+
+func scanWarehouse(row rowScanner, item *Warehouse) error {
+	if err := row.Scan(
+		&item.ID,
+		&item.Code,
+		&item.Name,
+		&item.Address,
+		&item.PICName,
+		&item.Phone,
+		&item.ArchivedAt,
+		&item.CreatedAt,
+		&item.UpdatedAt,
+	); err != nil {
+		return err
+	}
+
+	// pgx mengembalikan waktu dalam zona lokal mesin, sedangkan kontrak API
+	// meminta UTC. Semua baris dibaca lewat fungsi ini, jadi cukup di sini.
+	item.CreatedAt = item.CreatedAt.UTC()
+	item.UpdatedAt = item.UpdatedAt.UTC()
+	if item.ArchivedAt != nil {
+		archived := item.ArchivedAt.UTC()
+		item.ArchivedAt = &archived
+	}
+
+	return nil
+}
+
 func (repo *Repository) List(
 	ctx context.Context,
 	params ListParams,
@@ -106,17 +139,7 @@ func (repo *Repository) List(
 	for rows.Next() {
 		var item Warehouse
 
-		if err := rows.Scan(
-			&item.ID,
-			&item.Code,
-			&item.Name,
-			&item.Address,
-			&item.PICName,
-			&item.Phone,
-			&item.ArchivedAt,
-			&item.CreatedAt,
-			&item.UpdatedAt,
-		); err != nil {
+		if err := scanWarehouse(rows, &item); err != nil {
 			return ListResult{}, fmt.Errorf(
 				"gagal membaca data gudang: %w", err,
 			)
@@ -158,7 +181,7 @@ func (repo *Repository) Create(
 
 	var item Warehouse
 
-	err := repo.db.QueryRow(
+	err := scanWarehouse(repo.db.QueryRow(
 		ctx,
 		query,
 		input.Code,
@@ -166,17 +189,7 @@ func (repo *Repository) Create(
 		input.Address,
 		input.PICName,
 		input.Phone,
-	).Scan(
-		&item.ID,
-		&item.Code,
-		&item.Name,
-		&item.Address,
-		&item.PICName,
-		&item.Phone,
-		&item.ArchivedAt,
-		&item.CreatedAt,
-		&item.UpdatedAt,
-	)
+	), &item)
 	if err != nil {
 		return Warehouse{}, fmt.Errorf("gagal membuat gudang: %w", err)
 	}
@@ -197,17 +210,7 @@ func (repo *Repository) GetByID(
 
 	var item Warehouse
 
-	err := repo.db.QueryRow(ctx, query, id).Scan(
-		&item.ID,
-		&item.Code,
-		&item.Name,
-		&item.Address,
-		&item.PICName,
-		&item.Phone,
-		&item.ArchivedAt,
-		&item.CreatedAt,
-		&item.UpdatedAt,
-	)
+	err := scanWarehouse(repo.db.QueryRow(ctx, query, id), &item)
 	if err != nil {
 		return Warehouse{}, fmt.Errorf("gagal mengambil gudang: %w", err)
 	}
@@ -235,7 +238,7 @@ func (repo *Repository) Update(
 
 	var item Warehouse
 
-	err := repo.db.QueryRow(
+	err := scanWarehouse(repo.db.QueryRow(
 		ctx,
 		query,
 		input.Code,
@@ -244,17 +247,7 @@ func (repo *Repository) Update(
 		input.PICName,
 		input.Phone,
 		id,
-	).Scan(
-		&item.ID,
-		&item.Code,
-		&item.Name,
-		&item.Address,
-		&item.PICName,
-		&item.Phone,
-		&item.ArchivedAt,
-		&item.CreatedAt,
-		&item.UpdatedAt,
-	)
+	), &item)
 	if err != nil {
 		return Warehouse{}, fmt.Errorf("gagal memperbarui gudang: %w", err)
 	}
@@ -277,17 +270,7 @@ func (repo *Repository) Archive(
 
 	var item Warehouse
 
-	err := repo.db.QueryRow(ctx, query, id).Scan(
-		&item.ID,
-		&item.Code,
-		&item.Name,
-		&item.Address,
-		&item.PICName,
-		&item.Phone,
-		&item.ArchivedAt,
-		&item.CreatedAt,
-		&item.UpdatedAt,
-	)
+	err := scanWarehouse(repo.db.QueryRow(ctx, query, id), &item)
 	if err != nil {
 		return Warehouse{}, fmt.Errorf("gagal mengarsipkan gudang: %w", err)
 	}
@@ -310,17 +293,7 @@ func (repo *Repository) Restore(
 
 	var item Warehouse
 
-	err := repo.db.QueryRow(ctx, query, id).Scan(
-		&item.ID,
-		&item.Code,
-		&item.Name,
-		&item.Address,
-		&item.PICName,
-		&item.Phone,
-		&item.ArchivedAt,
-		&item.CreatedAt,
-		&item.UpdatedAt,
-	)
+	err := scanWarehouse(repo.db.QueryRow(ctx, query, id), &item)
 	if err != nil {
 		return Warehouse{}, fmt.Errorf("gagal memulihkan gudang: %w", err)
 	}
