@@ -83,7 +83,7 @@ func (repo *Repository) List(
 	args := []any{}
 
 	if search != "" {
-		args = append(args, "%"+search+"%")
+		args = append(args, "%"+escapeLikePattern(search)+"%")
 		where = append(where, fmt.Sprintf(
 			"(code ILIKE $%d OR name ILIKE $%d)",
 			len(args), len(args),
@@ -121,7 +121,7 @@ func (repo *Repository) List(
 		SELECT id, code, name, address, pic_name, phone,
 		       archived_at, created_at, updated_at
 		FROM warehouses` + whereSQL + fmt.Sprintf(`
-		ORDER BY name ASC
+		ORDER BY LOWER(name) ASC
 		LIMIT $%d OFFSET $%d`,
 		len(listArgs)-1, len(listArgs),
 	)
@@ -157,6 +157,9 @@ func (repo *Repository) List(
 	totalPages := total / int64(params.PerPage)
 	if total%int64(params.PerPage) != 0 {
 		totalPages++
+	}
+	if totalPages == 0 {
+		totalPages = 1
 	}
 
 	return ListResult{
@@ -299,4 +302,10 @@ func (repo *Repository) Restore(
 	}
 
 	return item, nil
+}
+
+// Karakter % dan _ punya arti khusus di LIKE. Fungsi ini membuat kata yang
+// dicari user diperlakukan sebagai teks biasa.
+func escapeLikePattern(value string) string {
+	return strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`).Replace(value)
 }

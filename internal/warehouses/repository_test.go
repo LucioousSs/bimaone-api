@@ -81,3 +81,12 @@ func TestScanWarehouseConvertsToUTC(t *testing.T) {
 		t.Fatalf("momen waktu berubah: %v vs %v", item.CreatedAt, local)
 	}
 }
+
+func TestEscapeLikePattern(t *testing.T) {
+	input := `50%_off\`
+	want := `50\%\_off\\`
+
+	if got := escapeLikePattern(input); got != want {
+		t.Fatalf("escapeLikePattern salah: dapat %q, ingin %q", got, want)
+	}
+}
