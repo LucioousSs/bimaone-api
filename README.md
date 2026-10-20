@@ -128,6 +128,7 @@ internal/brands/             model.go, repository.go, handler.go
 internal/warehouses/         model.go, repository.go, handler.go
 db/migrations/               skema. Setiap versi punya file .up.sql dan .down.sql
 db/seeds/                    data contoh, dijalankan manual setelah migrate
+postman/                     koleksi Postman + environment
 docker-compose.yml           PostgreSQL 16
 ```
 
@@ -200,10 +201,7 @@ Error:
 ```
 
 `fields` selalu ada. Isinya objek kosong `{}` kalau errornya bukan soal isi field.
-
-Catatan: perilaku itu sudah diterapkan di `brands`. Di `warehouses` saat ini `fields`
-ikut hilang kalau kosong, karena memakai `json:"fields,omitempty"`. Jadi kalau ragu,
-lihat paket `brands` sebagai acuan.
+Perilaku ini berlaku sama di `brands` dan `warehouses`.
 
 | Status | Code | Kapan |
 |---|---|---|
@@ -231,7 +229,14 @@ lihat paket `brands` sebagai acuan.
 go test ./...
 ```
 
-Test handler dan repository baru ada di paket `warehouses`. Untuk `brands` belum ada.
+Test handler dan repository tersedia di paket `brands` dan `warehouses`.
+Jalankan `go test ./...` dari root repo.
+
+## Koleksi Postman
+
+Koleksi semua endpoint beserta contoh error ada di folder `postman/`. Import
+`BIMAONE.postman_collection.json` dan `BIMAONE.postman_environment.json`, pilih
+environment `BIMAONE Local`, lalu jalankan request. Detail ada di `postman/README.md`.
 
 ## Catatan yang sering bikin bingung
 

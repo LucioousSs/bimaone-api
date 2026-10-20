@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"testing"
+	"time"
 
 	"bimaone-api/internal/database"
 )
@@ -41,5 +42,51 @@ func TestListIntegration(t *testing.T) {
 	}
 	if result.Data[0].CreatedAt.IsZero() {
 		t.Fatal("created_at kosong")
+	}
+}
+
+type fakeWarehouseRow struct {
+	at time.Time
+}
+
+func (f fakeWarehouseRow) Scan(dest ...any) error {
+	*dest[0].(*int64) = 1
+	*dest[1].(*string) = "GDG-01"
+	*dest[2].(*string) = "Gudang Uji"
+	*dest[3].(**string) = nil
+	*dest[4].(**string) = nil
+	*dest[5].(**string) = nil
+	*dest[6].(**time.Time) = nil
+	*dest[7].(*time.Time) = f.at
+	*dest[8].(*time.Time) = f.at
+	return nil
+}
+
+func TestScanWarehouseConvertsToUTC(t *testing.T) {
+	wita := time.FixedZone("WITA", 8*60*60)
+	local := time.Date(2026, 10, 16, 11, 50, 4, 0, wita)
+
+	var item Warehouse
+	if err := scanWarehouse(fakeWarehouseRow{at: local}, &item); err != nil {
+		t.Fatalf("scanWarehouse gagal: %v", err)
+	}
+
+	if item.CreatedAt.Location() != time.UTC {
+		t.Fatalf("created_at harus bertimezone UTC, didapat %v", item.CreatedAt.Location())
+	}
+	if item.UpdatedAt.Location() != time.UTC {
+		t.Fatalf("updated_at harus bertimezone UTC, didapat %v", item.UpdatedAt.Location())
+	}
+	if !item.CreatedAt.Equal(local) {
+		t.Fatalf("momen waktu berubah: %v vs %v", item.CreatedAt, local)
+	}
+}
+
+func TestEscapeLikePattern(t *testing.T) {
+	input := `50%_off\`
+	want := `50\%\_off\\`
+
+	if got := escapeLikePattern(input); got != want {
+		t.Fatalf("escapeLikePattern salah: dapat %q, ingin %q", got, want)
 	}
 }

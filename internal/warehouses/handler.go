@@ -21,6 +21,11 @@ func NewHandler(repo *Repository) *Handler {
 }
 
 func respondError(c *gin.Context, status int, code, message string, fields map[string]string) {
+	// Map nil akan jadi null di JSON, sedangkan kontrak API meminta {}.
+	if fields == nil {
+		fields = map[string]string{}
+	}
+
 	c.JSON(status, ErrorResponse{
 		Error: APIError{
 			Code:    code,

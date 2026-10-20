@@ -107,3 +107,31 @@ func TestHandler_InvalidID(t *testing.T) {
 		t.Fatalf("error code salah, diharapkan BAD_REQUEST tetapi didapat %s", resp.Error.Code)
 	}
 }
+
+func TestHandler_ErrorAlwaysHasFields(t *testing.T) {
+	h := NewHandler(nil)
+
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	c.Params = gin.Params{{Key: "id", Value: "0"}}
+	c.Request = httptest.NewRequest(http.MethodGet, "/api/v1/warehouses/0", nil)
+
+	h.GetByID(c)
+
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("status code salah, diharapkan 400 tetapi didapat %d", w.Code)
+	}
+
+	var body map[string]map[string]any
+	if err := json.Unmarshal(w.Body.Bytes(), &body); err != nil {
+		t.Fatalf("gagal deserialize respons: %v", err)
+	}
+
+	fields, ok := body["error"]["fields"]
+	if !ok {
+		t.Fatal("respons error harus memuat field 'fields'")
+	}
+	if fields == nil {
+		t.Fatal("field 'fields' harus berupa objek {}, bukan null")
+	}
+}
